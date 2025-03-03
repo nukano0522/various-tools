@@ -362,3 +362,14 @@ button {
   gap: 10px;
   margin-top: 15px;
 }
+
+.url-display {
+  background-color: #f9f9f9;
+  padding: 10px;
+  border-radius: 4px;
+  margin: 15px 0;
+  word-break: break-all;
+  text-align: left;
+  font-size: 13px;
+  border-left: 3px solid #2196F3;
+}

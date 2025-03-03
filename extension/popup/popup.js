@@ -196,41 +196,8 @@ function displaySearchResult(results, url) {
     // アーカイブが見つかった場合
     setStatus('success', 'アーカイブが見つかりました！');
     
-    // 結果を表示
-    const resultElement = document.getElementById('result');
-    resultElement.innerHTML = '';
-    
     // 最適なアーカイブを取得
     const bestArchive = results.bestArchive || results;
-    const serviceClass = getServiceClass(bestArchive.service);
-    
-    // アーカイブ情報を表示
-    resultElement.innerHTML = `
-      <div class="archive-item ${serviceClass}">
-        <div class="archive-service ${serviceClass}">${bestArchive.service}</div>
-        <div class="archive-date">${formatTimestamp(bestArchive.timestamp)}</div>
-        <p>アクセスしようとしたページは現在利用できませんが、Web Archiveに保存されたバージョンが見つかりました。</p>
-        <div class="archive-actions">
-          <button id="viewArchiveBtn" class="primary-button">アーカイブを表示</button>
-          <button id="viewOriginalBtn" class="secondary-button">元のページを再訪問</button>
-        </div>
-      </div>
-    `;
-    
-    // ボタンにイベントリスナーを追加
-    document.getElementById('viewArchiveBtn').addEventListener('click', () => {
-      // 新しいタブでアーカイブを開く
-      chrome.tabs.create({ url: bestArchive.url });
-      // ポップアップを閉じる
-      window.close();
-    });
-    
-    document.getElementById('viewOriginalBtn').addEventListener('click', () => {
-      // 元のページを開く
-      chrome.tabs.create({ url: url });
-      // ポップアップを閉じる
-      window.close();
-    });
     
     // 履歴に追加
     chrome.runtime.sendMessage({
@@ -240,6 +207,12 @@ function displaySearchResult(results, url) {
       timestamp: bestArchive.timestamp,
       service: bestArchive.service
     });
+    
+    // 方法1: popup.js内で直接表示（現在の実装）
+    displayArchiveInPopup(bestArchive, url);
+    
+    // 方法2: archive-found.htmlを使用（必要に応じてコメントを外す）
+    // openArchiveFoundPage(bestArchive, url);
   } else {
     // アーカイブが見つからなかった場合
     setStatus('warning', 'アーカイブが見つかりませんでした');
@@ -279,6 +252,75 @@ function displaySearchResult(results, url) {
       window.close();
     });
   }
+}
+
+// popup.js内で直接アーカイブ情報を表示する関数
+function displayArchiveInPopup(archive, url) {
+  // 結果を表示
+  const resultElement = document.getElementById('result');
+  resultElement.innerHTML = '';
+  
+  const serviceClass = getServiceClass(archive.service);
+  
+  // アーカイブ情報を表示
+  resultElement.innerHTML = `
+    <div class="archive-item ${serviceClass}">
+      <div class="archive-service ${serviceClass}">${archive.service}</div>
+      <div class="archive-date">${formatTimestamp(archive.timestamp)}</div>
+      <p>アクセスしようとしたページは現在利用できませんが、Web Archiveに保存されたバージョンが見つかりました。</p>
+      <div class="url-display">
+        <strong>元のURL:</strong>
+        <div>${url}</div>
+      </div>
+      <div class="archive-actions">
+        <button id="viewArchiveBtn" class="primary-button">アーカイブを表示</button>
+        <button id="viewOriginalBtn" class="secondary-button">元のページを再訪問</button>
+      </div>
+    </div>
+  `;
+  
+  // ボタンにイベントリスナーを追加（setTimeout を使用して確実に要素が存在するようにする）
+  setTimeout(() => {
+    const viewArchiveBtn = document.getElementById('viewArchiveBtn');
+    if (viewArchiveBtn) {
+      viewArchiveBtn.addEventListener('click', () => {
+        console.log('アーカイブを表示ボタンがクリックされました');
+        console.log('開くURL:', archive.url);
+        // 新しいタブでアーカイブを開く
+        chrome.tabs.create({ url: archive.url });
+        // ポップアップを閉じる
+        window.close();
+      });
+    }
+    
+    const viewOriginalBtn = document.getElementById('viewOriginalBtn');
+    if (viewOriginalBtn) {
+      viewOriginalBtn.addEventListener('click', () => {
+        console.log('元のページを再訪問ボタンがクリックされました');
+        console.log('開くURL:', url);
+        // 元のページを開く
+        chrome.tabs.create({ url: url });
+        // ポップアップを閉じる
+        window.close();
+      });
+    }
+  }, 100);
+}
+
+// archive-found.htmlを使用してアーカイブ情報を表示する関数
+function openArchiveFoundPage(archive, url) {
+  // URLパラメータを構築
+  const params = new URLSearchParams();
+  params.append('original', url);
+  params.append('archive', archive.url);
+  params.append('service', archive.service);
+  
+  // archive-found.htmlを開く
+  const archiveFoundUrl = chrome.runtime.getURL(`popup/archive-found.html?${params.toString()}`);
+  chrome.tabs.create({ url: archiveFoundUrl });
+  
+  // ポップアップを閉じる
+  window.close();
 }
 
 // サービス名からCSSクラス名を取得
