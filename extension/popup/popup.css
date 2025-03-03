@@ -1,0 +1,154 @@
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  width: 320px;
+  margin: 0;
+  padding: 0;
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.container {
+  padding: 16px;
+}
+
+h2 {
+  color: #2c3e50;
+  margin-top: 0;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 8px;
+}
+
+#status {
+  margin: 10px 0;
+  padding: 8px;
+  border-radius: 4px;
+  background-color: #eee;
+  min-height: 20px;
+}
+
+#status.loading {
+  background-color: #f9f9c5;
+}
+
+#status.success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+#status.error {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+#controls {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #3498db;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #2980b9;
+}
+
+button:disabled {
+  background-color: #95a5a6;
+  cursor: not-allowed;
+}
+
+#result {
+  margin-top: 16px;
+  padding: 10px;
+  border-radius: 4px;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+#result a {
+  color: #3498db;
+  text-decoration: none;
+  display: inline-block;
+  margin-top: 8px;
+}
+
+#result a:hover {
+  text-decoration: underline;
+}
+
+.archive-item {
+  padding: 8px;
+  margin-bottom: 8px;
+  border-left: 3px solid #3498db;
+  background-color: #f9f9f9;
+}
+
+.archive-date {
+  font-size: 0.9em;
+  color: #7f8c8d;
+}
+
+.settings-link {
+  display: block;
+  text-align: center;
+  margin-top: 16px;
+  font-size: 0.9em;
+  color: #7f8c8d;
+  text-decoration: none;
+}
+
+.settings-link:hover {
+  color: #3498db;
+}
+
+#history {
+  margin-top: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+  border-top: 1px solid #eee;
+  padding-top: 8px;
+}
+
+.history-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: #2c3e50;
+}
+
+.tab-container {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 16px;
+}
+
+.tab {
+  padding: 8px 16px;
+  cursor: pointer;
+  background-color: #f1f1f1;
+  border: 1px solid #ddd;
+  border-bottom: none;
+  margin-right: 2px;
+}
+
+.tab.active {
+  background-color: white;
+  border-bottom: 1px solid white;
+  margin-bottom: -1px;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}

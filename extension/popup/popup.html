@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Web Archive Helper</h2>
+    
+    <div class="tab-container">
+      <div class="tab active" data-tab="main">メイン</div>
+      <div class="tab" data-tab="history">履歴</div>
+      <div class="tab" data-tab="settings">設定</div>
+    </div>
+    
+    <div id="main-tab" class="tab-content active">
+      <div id="status"></div>
+      <div id="controls">
+        <button id="checkArchive">現在のページをチェック</button>
+        <button id="saveArchive">現在のページをアーカイブ</button>
+      </div>
+      <div id="result"></div>
+    </div>
+    
+    <div id="history-tab" class="tab-content">
+      <div class="history-title">アーカイブ履歴</div>
+      <div id="history-list">
+        <div class="archive-item">履歴がありません</div>
+      </div>
+      <button id="clearHistory" style="margin-top: 10px;">履歴をクリア</button>
+    </div>
+    
+    <div id="settings-tab" class="tab-content">
+      <h3>設定</h3>
+      <div class="setting-item">
+        <label>
+          <input type="checkbox" id="autoArchive" checked>
+          エラーページを自動的にアーカイブする
+        </label>
+      </div>
+      <div class="setting-item">
+        <label>
+          <input type="checkbox" id="showNotification" checked>
+          アーカイブが見つかったとき通知する
+        </label>
+      </div>
+      <button id="saveSettings" style="margin-top: 10px;">設定を保存</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Web Archive Helper",
+  "version": "1.0",
+  "description": "ページが無効な場合に自動的にWayback Machineのアーカイブを検索・保存します",
+  "permissions": [
+    "webRequest",
+    "tabs",
+    "storage",
+    "webNavigation"
+  ],
+  "host_permissions": [
+    "*://*/*",
+    "https://web.archive.org/*",
+    "https://archive.org/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.svg"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.svg"
+  }
+} 
