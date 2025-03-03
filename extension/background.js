@@ -1,7 +1,7 @@
 // 拡張機能のインストール時に初期設定を行う
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.sync.set({ 
-    autoArchive: true,
+    autoArchive: false,
     showNotification: true,
     archiveHistory: [],
     enabledArchives: {
@@ -302,7 +302,8 @@ function findBestArchive(archives) {
   return archives[0];
 }
 
-// エラーページを検出して処理する
+// エラーページを検出して処理する - 自動アーカイブ機能は無効化
+/*
 chrome.webNavigation.onErrorOccurred.addListener((details) => {
   // メインフレームのエラーのみを処理
   if (details.frameId !== 0) return;
@@ -383,3 +384,4 @@ chrome.webNavigation.onErrorOccurred.addListener((details) => {
       });
   });
 });
+*/

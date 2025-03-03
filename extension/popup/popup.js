@@ -267,7 +267,7 @@ function displayArchiveInPopup(archive, url) {
     <div class="archive-item ${serviceClass}">
       <div class="archive-service ${serviceClass}">${archive.service}</div>
       <div class="archive-date">${formatTimestamp(archive.timestamp)}</div>
-      <p>アクセスしようとしたページは現在利用できませんが、Web Archiveに保存されたバージョンが見つかりました。</p>
+      <p>アーカイブが見つかりました。</p>
       <div class="url-display">
         <strong>元のURL:</strong>
         <div>${url}</div>
@@ -279,32 +279,24 @@ function displayArchiveInPopup(archive, url) {
     </div>
   `;
   
-  // ボタンにイベントリスナーを追加（setTimeout を使用して確実に要素が存在するようにする）
-  setTimeout(() => {
-    const viewArchiveBtn = document.getElementById('viewArchiveBtn');
-    if (viewArchiveBtn) {
-      viewArchiveBtn.addEventListener('click', () => {
-        console.log('アーカイブを表示ボタンがクリックされました');
-        console.log('開くURL:', archive.url);
-        // 新しいタブでアーカイブを開く
-        chrome.tabs.create({ url: archive.url });
-        // ポップアップを閉じる
-        window.close();
-      });
-    }
-    
-    const viewOriginalBtn = document.getElementById('viewOriginalBtn');
-    if (viewOriginalBtn) {
-      viewOriginalBtn.addEventListener('click', () => {
-        console.log('元のページを再訪問ボタンがクリックされました');
-        console.log('開くURL:', url);
-        // 元のページを開く
-        chrome.tabs.create({ url: url });
-        // ポップアップを閉じる
-        window.close();
-      });
-    }
-  }, 100);
+  // ボタンにイベントリスナーを追加
+  document.getElementById('viewArchiveBtn').onclick = function() {
+    console.log('アーカイブを表示ボタンがクリックされました');
+    console.log('開くURL:', archive.url);
+    // 新しいタブでアーカイブを開く
+    chrome.tabs.create({ url: archive.url });
+    // ポップアップを閉じる
+    window.close();
+  };
+  
+  document.getElementById('viewOriginalBtn').onclick = function() {
+    console.log('元のページを再訪問ボタンがクリックされました');
+    console.log('開くURL:', url);
+    // 元のページを開く
+    chrome.tabs.create({ url: url });
+    // ポップアップを閉じる
+    window.close();
+  };
 }
 
 // archive-found.htmlを使用してアーカイブ情報を表示する関数
@@ -372,7 +364,6 @@ function formatTimestamp(timestamp) {
 // 設定を読み込む
 function loadSettings() {
   chrome.storage.sync.get({
-    autoArchive: true,
     showNotification: true,
     enabledArchives: {
       waybackMachine: true,
@@ -381,9 +372,6 @@ function loadSettings() {
       memento: false
     }
   }, (items) => {
-    // 自動アーカイブの設定
-    document.getElementById('autoArchive').checked = items.autoArchive;
-    
     // 通知の設定
     document.getElementById('showNotification').checked = items.showNotification;
     
@@ -410,16 +398,11 @@ function loadSettings() {
     // 設定保存ボタンのイベントリスナー
     document.getElementById('saveSettings').addEventListener('click', saveSettings);
     
-    // 自動アーカイブと通知の設定変更イベント
-    document.getElementById('autoArchive').addEventListener('change', saveSettings);
+    // 通知の設定変更イベント
     document.getElementById('showNotification').addEventListener('change', saveSettings);
     
     // アーカイブサービスの設定変更イベント
     document.getElementById('waybackMachine').addEventListener('change', (e) => {
-      validateArchiveServices(e.target);
-    });
-    
-    document.getElementById('googleCache').addEventListener('change', (e) => {
       validateArchiveServices(e.target);
     });
   });
@@ -443,13 +426,11 @@ function validateArchiveServices(changedCheckbox) {
 
 // 設定を保存
 function saveSettings() {
-  const autoArchive = document.getElementById('autoArchive').checked;
   const showNotification = document.getElementById('showNotification').checked;
   const waybackMachine = document.getElementById('waybackMachine').checked;
   const googleCache = document.getElementById('googleCache').checked;
   
   chrome.storage.sync.set({
-    autoArchive: autoArchive,
     showNotification: showNotification,
     enabledArchives: {
       waybackMachine: waybackMachine,
@@ -458,14 +439,13 @@ function saveSettings() {
       memento: false
     }
   }, () => {
-    // 保存完了メッセージ
+    // 保存完了メッセージを表示
     const saveStatus = document.getElementById('saveStatus');
     saveStatus.textContent = '設定を保存しました';
-    saveStatus.style.display = 'block';
     
     // 3秒後にメッセージを消す
     setTimeout(() => {
-      saveStatus.style.display = 'none';
+      saveStatus.textContent = '';
     }, 3000);
   });
 }
