@@ -194,9 +194,43 @@ function startPolling(url) {
 function displaySearchResult(results, url) {
   if (results.found) {
     // アーカイブが見つかった場合
+    setStatus('success', 'アーカイブが見つかりました！');
+    
+    // 結果を表示
+    const resultElement = document.getElementById('result');
+    resultElement.innerHTML = '';
     
     // 最適なアーカイブを取得
     const bestArchive = results.bestArchive || results;
+    const serviceClass = getServiceClass(bestArchive.service);
+    
+    // アーカイブ情報を表示
+    resultElement.innerHTML = `
+      <div class="archive-item ${serviceClass}">
+        <div class="archive-service ${serviceClass}">${bestArchive.service}</div>
+        <div class="archive-date">${formatTimestamp(bestArchive.timestamp)}</div>
+        <p>アクセスしようとしたページは現在利用できませんが、Web Archiveに保存されたバージョンが見つかりました。</p>
+        <div class="archive-actions">
+          <button id="viewArchiveBtn" class="primary-button">アーカイブを表示</button>
+          <button id="viewOriginalBtn" class="secondary-button">元のページを再訪問</button>
+        </div>
+      </div>
+    `;
+    
+    // ボタンにイベントリスナーを追加
+    document.getElementById('viewArchiveBtn').addEventListener('click', () => {
+      // 新しいタブでアーカイブを開く
+      chrome.tabs.create({ url: bestArchive.url });
+      // ポップアップを閉じる
+      window.close();
+    });
+    
+    document.getElementById('viewOriginalBtn').addEventListener('click', () => {
+      // 元のページを開く
+      chrome.tabs.create({ url: url });
+      // ポップアップを閉じる
+      window.close();
+    });
     
     // 履歴に追加
     chrome.runtime.sendMessage({
@@ -206,12 +240,6 @@ function displaySearchResult(results, url) {
       timestamp: bestArchive.timestamp,
       service: bestArchive.service
     });
-    
-    // 直接アーカイブページを開く
-    window.open(bestArchive.url, '_blank');
-    
-    // ポップアップを閉じる
-    window.close();
   } else {
     // アーカイブが見つからなかった場合
     setStatus('warning', 'アーカイブが見つかりませんでした');
@@ -234,15 +262,20 @@ function displaySearchResult(results, url) {
       <div class="no-archive">
         <p>このページのアーカイブは見つかりませんでした。</p>
         ${errorMessage}
-        <button id="createArchiveBtn" class="create-archive-btn">
-          Wayback Machineで保存する
-        </button>
+        <button id="createArchiveBtn" class="primary-button">Wayback Machineで保存する</button>
+        <button id="tryOriginalBtn" class="secondary-button">元のページを再訪問</button>
       </div>
     `;
     
     // 保存ボタンにイベントリスナーを追加
     document.getElementById('createArchiveBtn').addEventListener('click', () => {
-      window.open(`https://web.archive.org/save/${url}`, '_blank');
+      chrome.tabs.create({ url: `https://web.archive.org/save/${url}` });
+      window.close();
+    });
+    
+    // 元のページボタンにイベントリスナーを追加
+    document.getElementById('tryOriginalBtn').addEventListener('click', () => {
+      chrome.tabs.create({ url: url });
       window.close();
     });
   }

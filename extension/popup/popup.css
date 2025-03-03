@@ -110,6 +110,23 @@ button {
   background-color: #0D47A1;
 }
 
+.secondary-button {
+  background-color: #E0E0E0;
+  color: #424242;
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.secondary-button:hover {
+  background-color: #BDBDBD;
+}
+
+.secondary-button:active {
+  background-color: #9E9E9E;
+}
+
 /* 結果表示 */
 #result {
   margin-top: 15px;
@@ -337,4 +354,11 @@ button {
 
 #clearHistory:hover {
   background-color: #D32F2F;
+}
+
+.archive-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
 }
