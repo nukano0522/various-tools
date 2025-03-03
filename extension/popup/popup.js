@@ -1,236 +1,453 @@
-document.addEventListener('DOMContentLoaded', function() {
-  const statusDiv = document.getElementById('status');
-  const resultDiv = document.getElementById('result');
+// DOM要素が読み込まれたら実行
+document.addEventListener('DOMContentLoaded', () => {
+  // 検索フラグをリセット
+  resetSearchFlag();
   
-  // タブ切り替え機能
-  const tabs = document.querySelectorAll('.tab');
-  const tabContents = document.querySelectorAll('.tab-content');
+  // タブ切り替え
+  setupTabs();
   
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const tabName = tab.getAttribute('data-tab');
-      
-      // タブのアクティブ状態を切り替え
-      tabs.forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      
-      // タブコンテンツの表示を切り替え
-      tabContents.forEach(content => {
-        content.classList.remove('active');
-        if (content.id === `${tabName}-tab`) {
-          content.classList.add('active');
-        }
-      });
-    });
-  });
+  // 初期タブを表示
+  showTab('main');
+  
+  // 現在のページをチェック
+  document.getElementById('checkArchive').addEventListener('click', checkCurrentPage);
   
   // 設定の読み込み
   loadSettings();
   
   // 履歴の読み込み
   loadHistory();
-  
-  // 現在のページをチェック
-  document.getElementById('checkArchive').addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = tab.url;
-    
-    setStatus('loading', 'アーカイブを確認中...');
-    
-    try {
-      const response = await fetch(
-        `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.archived_snapshots.closest) {
-        const archiveUrl = data.archived_snapshots.closest.url;
-        const timestamp = data.archived_snapshots.closest.timestamp;
-        
-        setStatus('success', 'アーカイブが見つかりました！');
-        
-        resultDiv.innerHTML = `
-          <p>アーカイブが見つかりました！</p>
-          <p>日時: ${formatTimestamp(timestamp)}</p>
-          <a href="${archiveUrl}" target="_blank">アーカイブを表示</a>
-        `;
-        
-        // 履歴に追加
-        addToHistory(url, archiveUrl, timestamp);
-      } else {
-        setStatus('error', 'アーカイブが見つかりませんでした。');
-        resultDiv.textContent = 'アーカイブが見つかりませんでした。';
-      }
-    } catch (error) {
-      setStatus('error', 'エラーが発生しました。');
-      console.error('Error checking archive:', error);
-    }
-  });
-  
-  // 現在のページをアーカイブ
-  document.getElementById('saveArchive').addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = tab.url;
-    
-    setStatus('loading', 'ページをアーカイブ中...');
-    
-    try {
-      const saveUrl = `https://web.archive.org/save/${url}`;
-      const response = await fetch(saveUrl);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      setStatus('success', 'アーカイブを保存しました！');
-      
-      // 保存後、アーカイブを確認
-      setTimeout(async () => {
-        try {
-          const checkResponse = await fetch(
-            `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`
-          );
-          const data = await checkResponse.json();
-          
-          if (data.archived_snapshots.closest) {
-            const archiveUrl = data.archived_snapshots.closest.url;
-            const timestamp = data.archived_snapshots.closest.timestamp;
-            
-            resultDiv.innerHTML = `
-              <p>新しいアーカイブが作成されました！</p>
-              <p>日時: ${formatTimestamp(timestamp)}</p>
-              <a href="${archiveUrl}" target="_blank">アーカイブを表示</a>
-            `;
-            
-            // 履歴に追加
-            addToHistory(url, archiveUrl, timestamp);
-          }
-        } catch (error) {
-          console.error('Error checking new archive:', error);
-        }
-      }, 5000);
-    } catch (error) {
-      setStatus('error', 'アーカイブの保存に失敗しました。');
-      console.error('Error saving archive:', error);
-    }
-  });
-  
-  // 設定を保存
-  document.getElementById('saveSettings').addEventListener('click', () => {
-    const autoArchive = document.getElementById('autoArchive').checked;
-    const showNotification = document.getElementById('showNotification').checked;
-    
-    chrome.storage.sync.set({
-      autoArchive: autoArchive,
-      showNotification: showNotification
-    }, () => {
-      setStatus('success', '設定を保存しました！');
-      setTimeout(() => {
-        setStatus('', '');
-      }, 2000);
-    });
-  });
-  
-  // 履歴をクリア
-  document.getElementById('clearHistory').addEventListener('click', () => {
-    chrome.storage.sync.set({ archiveHistory: [] }, () => {
-      document.getElementById('history-list').innerHTML = '<div class="archive-item">履歴がありません</div>';
-      setStatus('success', '履歴をクリアしました！');
-      setTimeout(() => {
-        setStatus('', '');
-      }, 2000);
-    });
-  });
 });
 
-// ステータス表示を更新
+// 検索フラグをリセット
+function resetSearchFlag() {
+  chrome.runtime.sendMessage({ action: 'resetSearchFlag' }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('検索フラグのリセットエラー:', chrome.runtime.lastError);
+      return;
+    }
+    console.log('検索フラグをリセットしました');
+  });
+}
+
+// タブ切り替えの設定
+function setupTabs() {
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const tabId = tab.getAttribute('data-tab');
+      showTab(tabId);
+    });
+  });
+}
+
+// タブを表示
+function showTab(tabId) {
+  // すべてのタブコンテンツを非表示
+  const tabContents = document.querySelectorAll('.tab-content');
+  tabContents.forEach(content => {
+    content.style.display = 'none';
+  });
+  
+  // すべてのタブを非アクティブ
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // 選択されたタブとコンテンツを表示
+  document.getElementById(tabId).style.display = 'block';
+  document.querySelector(`.tab[data-tab="${tabId}"]`).classList.add('active');
+  
+  // タブに応じた追加処理
+  if (tabId === 'settings') {
+    loadSettings();
+  } else if (tabId === 'history') {
+    loadHistory();
+  }
+}
+
+// 現在のページをチェック
+async function checkCurrentPage() {
+  try {
+    // ステータスをリセット
+    setStatus('loading', 'アーカイブを確認中...');
+    document.getElementById('result').innerHTML = '';
+    
+    // 現在のタブのURLを取得
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = tab.url;
+    
+    // URLの検証
+    if (!url || !url.startsWith('http')) {
+      setStatus('error', '有効なURLではありません');
+      return;
+    }
+    
+    // 設定を取得
+    const settings = await chrome.storage.sync.get({
+      enabledArchives: {
+        waybackMachine: true,
+        archiveToday: false,
+        googleCache: true,
+        memento: false
+      }
+    });
+    
+    // 少なくとも1つのサービスが有効か確認
+    const hasEnabledService = Object.values(settings.enabledArchives).some(enabled => enabled);
+    if (!hasEnabledService) {
+      setStatus('error', '少なくとも1つのアーカイブサービスを有効にしてください');
+      return;
+    }
+    
+    // 検索前に検索フラグをリセット
+    resetSearchFlag();
+    
+    // バックグラウンドスクリプトにメッセージを送信
+    chrome.runtime.sendMessage(
+      { 
+        action: 'searchArchives', 
+        url: url, 
+        enabledArchives: settings.enabledArchives 
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('メッセージ送信エラー:', chrome.runtime.lastError);
+          setStatus('error', `エラー: ${chrome.runtime.lastError.message || 'メッセージ送信に失敗しました'}`);
+          return;
+        }
+        
+        if (!response) {
+          setStatus('error', 'レスポンスがありません');
+          return;
+        }
+        
+        if (!response.success) {
+          setStatus('error', `エラー: ${response.error || '不明なエラー'}`);
+          return;
+        }
+        
+        if (response.processing) {
+          // 処理中の場合はポーリングを開始
+          startPolling(url);
+        }
+      }
+    );
+  } catch (error) {
+    console.error('チェック中にエラーが発生しました:', error);
+    setStatus('error', `エラー: ${error.message || '不明なエラー'}`);
+    
+    // エラー発生時に検索フラグをリセット
+    resetSearchFlag();
+  }
+}
+
+// 結果をポーリングで取得
+function startPolling(url) {
+  let attempts = 0;
+  const maxAttempts = 10;
+  const interval = 500; // 500ミリ秒ごとに確認
+  
+  const pollTimer = setInterval(() => {
+    attempts++;
+    
+    if (attempts > maxAttempts) {
+      clearInterval(pollTimer);
+      setStatus('error', 'タイムアウト: 応答を受信できませんでした');
+      return;
+    }
+    
+    chrome.runtime.sendMessage({ action: 'getLastSearchResult' }, (response) => {
+      if (chrome.runtime.lastError) {
+        console.error('ポーリングエラー:', chrome.runtime.lastError);
+        return;
+      }
+      
+      if (!response || !response.success) {
+        return; // まだ結果がない
+      }
+      
+      const searchResult = response.data;
+      
+      // 現在のURLと一致するか確認
+      if (searchResult.url !== url) {
+        return; // 別のURLの結果
+      }
+      
+      // ポーリング停止
+      clearInterval(pollTimer);
+      
+      // エラーがあるか確認
+      if (searchResult.error) {
+        setStatus('error', `エラー: ${searchResult.error}`);
+        return;
+      }
+      
+      // 結果を表示
+      displaySearchResult(searchResult.result, url);
+    });
+  }, interval);
+}
+
+// 検索結果を表示
+function displaySearchResult(results, url) {
+  if (results.found) {
+    // アーカイブが見つかった場合
+    
+    // 最適なアーカイブを取得
+    const bestArchive = results.bestArchive || results;
+    
+    // 履歴に追加
+    chrome.runtime.sendMessage({
+      action: 'addToHistory',
+      originalUrl: url,
+      archiveUrl: bestArchive.url,
+      timestamp: bestArchive.timestamp,
+      service: bestArchive.service
+    });
+    
+    // 直接アーカイブページを開く
+    window.open(bestArchive.url, '_blank');
+    
+    // ポップアップを閉じる
+    window.close();
+  } else {
+    // アーカイブが見つからなかった場合
+    setStatus('warning', 'アーカイブが見つかりませんでした');
+    
+    // エラーメッセージがある場合は表示
+    let errorMessage = '';
+    if (results.error) {
+      errorMessage = `<p class="error-details"><strong>${results.service}:</strong> ${results.error}</p>`;
+    } else if (results.errors && results.errors.length > 0) {
+      errorMessage = '<div class="error-details">';
+      results.errors.forEach(error => {
+        errorMessage += `<p><strong>${error.service}:</strong> ${error.error}</p>`;
+      });
+      errorMessage += '</div>';
+    }
+    
+    // Wayback Machineで新規作成するリンクを表示
+    const resultElement = document.getElementById('result');
+    resultElement.innerHTML = `
+      <div class="no-archive">
+        <p>このページのアーカイブは見つかりませんでした。</p>
+        ${errorMessage}
+        <button id="createArchiveBtn" class="create-archive-btn">
+          Wayback Machineで保存する
+        </button>
+      </div>
+    `;
+    
+    // 保存ボタンにイベントリスナーを追加
+    document.getElementById('createArchiveBtn').addEventListener('click', () => {
+      window.open(`https://web.archive.org/save/${url}`, '_blank');
+      window.close();
+    });
+  }
+}
+
+// サービス名からCSSクラス名を取得
+function getServiceClass(serviceName) {
+  switch (serviceName) {
+    case 'Wayback Machine':
+      return 'wayback';
+    case 'Google Cache':
+      return 'google';
+    default:
+      return '';
+  }
+}
+
+// ステータスを設定
 function setStatus(type, message) {
-  const statusDiv = document.getElementById('status');
-  statusDiv.className = type ? type : '';
-  statusDiv.textContent = message;
+  const statusElement = document.getElementById('status');
+  statusElement.className = `status ${type}`;
+  statusElement.textContent = message;
 }
 
 // タイムスタンプをフォーマット
 function formatTimestamp(timestamp) {
-  const year = timestamp.slice(0, 4);
-  const month = timestamp.slice(4, 6);
-  const day = timestamp.slice(6, 8);
-  return `${year}年${month}月${day}日`;
+  if (!timestamp) return '不明な日時';
+  
+  try {
+    // YYYYMMDDhhmmss 形式を解析
+    if (timestamp.includes('T')) {
+      // ISO形式の場合
+      const date = new Date(timestamp);
+      return date.toLocaleString('ja-JP');
+    } else {
+      // YYYYMMDDhhmmss 形式の場合
+      const year = timestamp.substring(0, 4);
+      const month = timestamp.substring(4, 6);
+      const day = timestamp.substring(6, 8);
+      const hour = timestamp.substring(8, 10);
+      const minute = timestamp.substring(10, 12);
+      const second = timestamp.substring(12, 14);
+      
+      return `${year}年${month}月${day}日 ${hour}:${minute}:${second}`;
+    }
+  } catch (e) {
+    console.error('タイムスタンプのフォーマットエラー:', e);
+    return timestamp; // 解析できない場合はそのまま返す
+  }
 }
 
 // 設定を読み込む
 function loadSettings() {
   chrome.storage.sync.get({
     autoArchive: true,
-    showNotification: true
+    showNotification: true,
+    enabledArchives: {
+      waybackMachine: true,
+      archiveToday: false,
+      googleCache: true,
+      memento: false
+    }
   }, (items) => {
+    // 自動アーカイブの設定
     document.getElementById('autoArchive').checked = items.autoArchive;
+    
+    // 通知の設定
     document.getElementById('showNotification').checked = items.showNotification;
+    
+    // アーカイブサービスの設定
+    document.getElementById('waybackMachine').checked = items.enabledArchives.waybackMachine;
+    document.getElementById('googleCache').checked = items.enabledArchives.googleCache;
+    
+    // 他のサービスは無効化して表示
+    const otherServices = ['archiveToday', 'memento'];
+    otherServices.forEach(service => {
+      const checkbox = document.getElementById(service);
+      checkbox.checked = false;
+      checkbox.disabled = true;
+      checkbox.parentElement.classList.add('disabled');
+      checkbox.parentElement.title = '現在このサービスは利用できません';
+    });
+    
+    // Google Cacheのチェックボックスを有効化
+    const googleCacheCheckbox = document.getElementById('googleCache');
+    googleCacheCheckbox.disabled = false;
+    googleCacheCheckbox.parentElement.classList.remove('disabled');
+    googleCacheCheckbox.parentElement.title = '';
+    
+    // 設定保存ボタンのイベントリスナー
+    document.getElementById('saveSettings').addEventListener('click', saveSettings);
+    
+    // 自動アーカイブと通知の設定変更イベント
+    document.getElementById('autoArchive').addEventListener('change', saveSettings);
+    document.getElementById('showNotification').addEventListener('change', saveSettings);
+    
+    // アーカイブサービスの設定変更イベント
+    document.getElementById('waybackMachine').addEventListener('change', (e) => {
+      validateArchiveServices(e.target);
+    });
+    
+    document.getElementById('googleCache').addEventListener('change', (e) => {
+      validateArchiveServices(e.target);
+    });
+  });
+}
+
+// アーカイブサービスの選択を検証
+function validateArchiveServices(changedCheckbox) {
+  const waybackMachine = document.getElementById('waybackMachine');
+  const googleCache = document.getElementById('googleCache');
+  
+  // 少なくとも1つのサービスが有効になっているか確認
+  if (!waybackMachine.checked && !googleCache.checked) {
+    // 変更されたチェックボックスを再度チェック
+    changedCheckbox.checked = true;
+    alert('少なくとも1つのアーカイブサービスを有効にしてください');
+  }
+  
+  // 設定を保存
+  saveSettings();
+}
+
+// 設定を保存
+function saveSettings() {
+  const autoArchive = document.getElementById('autoArchive').checked;
+  const showNotification = document.getElementById('showNotification').checked;
+  const waybackMachine = document.getElementById('waybackMachine').checked;
+  const googleCache = document.getElementById('googleCache').checked;
+  
+  chrome.storage.sync.set({
+    autoArchive: autoArchive,
+    showNotification: showNotification,
+    enabledArchives: {
+      waybackMachine: waybackMachine,
+      archiveToday: false,
+      googleCache: googleCache,
+      memento: false
+    }
+  }, () => {
+    // 保存完了メッセージ
+    const saveStatus = document.getElementById('saveStatus');
+    saveStatus.textContent = '設定を保存しました';
+    saveStatus.style.display = 'block';
+    
+    // 3秒後にメッセージを消す
+    setTimeout(() => {
+      saveStatus.style.display = 'none';
+    }, 3000);
   });
 }
 
 // 履歴を読み込む
 function loadHistory() {
-  chrome.storage.sync.get({ archiveHistory: [] }, (items) => {
-    const historyList = document.getElementById('history-list');
+  chrome.storage.sync.get({ archiveHistory: [] }, (data) => {
+    const historyElement = document.getElementById('historyList');
+    historyElement.innerHTML = '';
     
-    if (items.archiveHistory.length === 0) {
-      historyList.innerHTML = '<div class="archive-item">履歴がありません</div>';
+    const history = data.archiveHistory;
+    
+    if (history.length === 0) {
+      historyElement.innerHTML = '<div class="no-history">履歴はありません</div>';
       return;
     }
     
-    historyList.innerHTML = '';
+    // 新しい順に並べ替え
+    history.sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    // 最新の10件のみ表示
-    const recentHistory = items.archiveHistory.slice(-10).reverse();
-    
-    recentHistory.forEach(item => {
+    // 履歴を表示
+    history.forEach(item => {
       const historyItem = document.createElement('div');
-      historyItem.className = 'archive-item';
+      historyItem.className = 'history-item';
       
-      const urlParts = new URL(item.originalUrl);
-      const displayUrl = urlParts.hostname + urlParts.pathname.substring(0, 15) + (urlParts.pathname.length > 15 ? '...' : '');
+      // URLを短く表示
+      const displayUrl = item.originalUrl.length > 40 
+        ? item.originalUrl.substring(0, 40) + '...' 
+        : item.originalUrl;
+      
+      // サービスに応じたクラスを取得
+      const serviceClass = getServiceClass(item.service);
       
       historyItem.innerHTML = `
-        <div>${displayUrl}</div>
-        <div class="archive-date">${formatTimestamp(item.timestamp)}</div>
-        <a href="${item.archiveUrl}" target="_blank">アーカイブを表示</a>
+        <div class="history-url" title="${item.originalUrl}">${displayUrl}</div>
+        <div class="history-info">
+          <span class="history-service ${serviceClass}">${item.service}</span>
+          <span class="history-date">${formatTimestamp(item.timestamp)}</span>
+        </div>
+        <div class="history-actions">
+          <a href="${item.archiveUrl}" target="_blank" class="history-link">開く</a>
+        </div>
       `;
       
-      historyList.appendChild(historyItem);
+      historyElement.appendChild(historyItem);
     });
+    
+    // 履歴クリアボタンのイベントリスナー
+    document.getElementById('clearHistory').addEventListener('click', clearHistory);
   });
 }
 
-// 履歴に追加
-function addToHistory(originalUrl, archiveUrl, timestamp) {
-  chrome.storage.sync.get({ archiveHistory: [] }, (items) => {
-    const history = items.archiveHistory;
-    
-    // 同じURLのエントリがあれば削除
-    const filteredHistory = history.filter(item => item.originalUrl !== originalUrl);
-    
-    // 新しいエントリを追加
-    filteredHistory.push({
-      originalUrl: originalUrl,
-      archiveUrl: archiveUrl,
-      timestamp: timestamp,
-      date: new Date().toISOString()
+// 履歴をクリア
+function clearHistory() {
+  if (confirm('履歴を全て削除しますか？')) {
+    chrome.storage.sync.set({ archiveHistory: [] }, () => {
+      loadHistory(); // 履歴を再読み込み
     });
-    
-    // 履歴が多すぎる場合は古いものを削除（最大50件）
-    const trimmedHistory = filteredHistory.slice(-50);
-    
-    chrome.storage.sync.set({ archiveHistory: trimmedHistory }, () => {
-      // 履歴タブが表示されている場合は更新
-      if (document.getElementById('history-tab').classList.contains('active')) {
-        loadHistory();
-      }
-    });
-  });
+  }
 } 

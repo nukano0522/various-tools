@@ -12,7 +12,8 @@
   "host_permissions": [
     "*://*/*",
     "https://web.archive.org/*",
-    "https://archive.org/*"
+    "https://archive.org/*",
+    "https://webcache.googleusercontent.com/*"
   ],
   "background": {
     "service_worker": "background.js"

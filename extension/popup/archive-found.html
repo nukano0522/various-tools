@@ -42,6 +42,16 @@
       text-align: left;
     }
     
+    .service-badge {
+      display: inline-block;
+      background-color: #3498db;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    
     .buttons {
       display: flex;
       justify-content: center;
@@ -81,8 +91,10 @@
   <div class="container">
     <h1>アーカイブが見つかりました</h1>
     
+    <div class="service-badge" id="serviceBadge">Wayback Machine</div>
+    
     <div class="message">
-      <p>アクセスしようとしたページは現在利用できませんが、Web Archiveに保存されたバージョンが見つかりました。</p>
+      <p>アクセスしようとしたページは現在利用できませんが、<span id="serviceName">Web Archive</span>に保存されたバージョンが見つかりました。</p>
     </div>
     
     <div class="url-display">
@@ -102,6 +114,11 @@
       const urlParams = new URLSearchParams(window.location.search);
       const originalUrl = urlParams.get('original');
       const archiveUrl = urlParams.get('archive');
+      const service = urlParams.get('service') || 'Wayback Machine';
+      
+      // サービス名を表示
+      document.getElementById('serviceBadge').textContent = service;
+      document.getElementById('serviceName').textContent = service;
       
       // 元のURLを表示
       document.getElementById('originalUrl').textContent = originalUrl;
